@@ -38,7 +38,7 @@ numberkey_canvas.addEventListener('click', e=>{
     
     
     current_sudoku.setNumber(cursor.i, cursor.j, i);
-    current_sudoku.resetCandidates();
+    current_sudoku.resetCandidate();
     draw();
 });
 
