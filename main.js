@@ -9,6 +9,8 @@ const cell_width = 40;
 const offset_x = 10;
 const offset_y = 10;
 
+const sudoku_procedure = [];
+const sudoku_log = [];
 
 const cursor = {i: -40, j: -400};
 
@@ -95,6 +97,7 @@ document.body.addEventListener("keydown", event =>{
         case "7": case "8": case "9": 
             current_sudoku.setNumber(cursor.i, cursor.j, parseInt(event.key));
             current_sudoku.resetCandidate();
+            user_action_history.push(current_sudoku.clone());
             draw();
             break;
         default:
@@ -190,8 +193,11 @@ const _isSameArray = (arr1, arr2)=>{
 };
 
 
+window.onload = ()=>{
+    //current_sudoku.importSudokuFromText("000070102040500000700019060000000037034000000060350004120800000000060009079102800");
+    draw();
+};
 
-draw();
 
 // 初級例題
 "650103409703506002001049508000010005437200801810304700000470010000050007000638200"
@@ -213,5 +219,5 @@ draw();
 
 // 世界一難しい数独
 "005300000800000020070010500400005300010070006003200080060500009004000030000009700"
-
 "800000000003600000070090200050007000000045700000100030001000068008500010090000400"
+"080000150406509080000008000000000000002040003300801000900070000600000004150000090"

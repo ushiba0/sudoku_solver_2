@@ -12,6 +12,7 @@ const quickSolver = (__sudoku, print_debug_log=false, depth=0)=>{
             }
 
             if(depth==0){
+                current_sudoku=sudoku
                 print(`この数独は解けません。depth=0`);
                 throw `この数独は解けません。depth=0`;
             }else{
@@ -39,7 +40,22 @@ const quickSolver = (__sudoku, print_debug_log=false, depth=0)=>{
         }
 
         // secodly basic solving method
-        result = _solve_deletion_Lv2(sudoku);
+        result = _solve_deletion_cell_Lv2(sudoku);
+        if(result.status == true){
+            continue;
+        }
+
+        result = _solve_deletion_block_Lv2(sudoku);
+        if(result.status == true){
+            continue;
+        }
+
+        result = _solve_deletion_row_Lv2(sudoku);
+        if(result.status == true){
+            continue;
+        }
+
+        result = _solve_deletion_column_Lv2(sudoku);
         if(result.status == true){
             continue;
         }
@@ -72,7 +88,17 @@ const quickSolver = (__sudoku, print_debug_log=false, depth=0)=>{
             continue;
         }
 
-        for(const num_countries of [2,3,4]){
+        result = __limit_row_block(sudoku); // 予約
+        if(result.status == true){
+            continue;
+        }
+
+        result = __limit_column_block(sudoku); // 予約
+        if(result.status == true){
+            continue;
+        }
+
+        for(const num_countries of [2,3,4,5,6,7]){
             result = _limit_row_ver1(sudoku, num_countries);
             if(result.status == true){
                 continue LOOP_SOLVE;
@@ -105,7 +131,7 @@ const quickSolver = (__sudoku, print_debug_log=false, depth=0)=>{
         }
 
         if(sudoku.isSolved()==true){
-            new SudokuStatus(true, `Solved sudoku.`, 2);
+            new SudokuStatus(true, `Solved sudoku.`, 2, false, sudoku);
             return sudoku;
         }
         
@@ -114,7 +140,7 @@ const quickSolver = (__sudoku, print_debug_log=false, depth=0)=>{
         // Unable to solve this sudoku with basic method.
         // Using assuming method.
         
-        new SudokuStatus(true, "これ以上は通常の手段では解けない。")
+        new SudokuStatus(true, "これ以上は通常の手段では解けない。", 2, false, sudoku)
         
         let i_copy = 0;
         let j_copy = 0;
@@ -143,6 +169,7 @@ const quickSolver = (__sudoku, print_debug_log=false, depth=0)=>{
             }
         }
         
+        
         const n_answer = sudoku_answer_temp.getNumber(i_copy, j_copy);
         for(let x=0; x<ij_Candidate.length; x++){
             if(ij_Candidate[x]==n_answer){
@@ -152,18 +179,15 @@ const quickSolver = (__sudoku, print_debug_log=false, depth=0)=>{
             }
         }
     
-        let count_contradiction = 0;
         let count_solved = 0;
-        const cand_contradiction = [];
         const cand_solved = [];
         for(let n of ij_Candidate){
             const sudoku_copy = sudoku.clone();
             sudoku_copy.setNumber(i_copy, j_copy, n);
             current_sudoku=sudoku;
-            draw(1);
             new SudokuStatus(true,
                 `Assuming: cell(${i_copy}, ${j_copy})=${n} と仮定する。depth=${depth}`,
-                2
+                2, true, sudoku
             );
             // 仮定法の実行
             const sudoku_result = quickSolver(sudoku_copy, false, depth+1);
@@ -171,7 +195,7 @@ const quickSolver = (__sudoku, print_debug_log=false, depth=0)=>{
             if(sudoku_result.hasContradiction().status==true){
                 new SudokuStatus(true,
                     `Assuming: cell(${i_copy}, ${j_copy})=${n} と仮定すると矛盾が発生して数独が解けない。よって cell(${i_copy}, ${j_copy}) に ${n} は入らない。depth=${depth}`,
-                    2
+                    2, true, sudoku
                 );
                 sudoku.deleteCandidate(i_copy, j_copy, n);
                 continue LOOP_SOLVE;
@@ -181,14 +205,22 @@ const quickSolver = (__sudoku, print_debug_log=false, depth=0)=>{
                 cand_solved.push(n);
                 count_solved++;
             }
+
+            if(sudoku_result.no_unique_solution == true){
+                sudoku.no_unique_solution = true;
+                return sudoku;
+            }
         }
 
         if(count_solved>1){
             new SudokuStatus(true,
                 `Assuming result: cell(${i_copy}, ${j_copy}) に数字が複数はいりえる。(一意解が存在しない)`,
-                2
+                2, true, sudoku
             );
-            throw "";
+            sudoku.no_unique_solution = true;
+            return sudoku;
+            
+            //throw "";
         }
         
         continue;
@@ -212,14 +244,12 @@ const _solve_deletion_row_Lv1 = (sudoku) => {
                 if(sudoku.getNumber(i, j)==0){
                     const n_list = sudoku.getN_ListInCell(i, j);
                     if(n_list.length!=1){
-                        console.error(`Deletion Lv.1 (row ${i}): cell(${i}, ${j})=${n_list[0]}`)
-                        current_sudoku=sudoku;
-                        draw(1); throw "";
-                        return new SudokuStatus(false);
+                        throw "we should not reach here"
                     }
                     sudoku.setNumber(i, j, n_list[0]);
                     return new SudokuStatus(true, 
-                        `Deletion Lv.1 (row ${i}): cell(${i}, ${j})=${n_list[0]}`
+                        `Deletion Lv.1 (row ${i}): cell(${i}, ${j})=${n_list[0]}`,
+                        4, true, sudoku
                     );
                 }
             }
@@ -238,12 +268,12 @@ const _solve_deletion_column_Lv1 = (sudoku) => {
                 if(sudoku.getNumber(i, j)==0){
                     const n_list = sudoku.getN_ListInCell(i, j);
                     if(n_list.length!=1){
-                        console.error("yabaiyoyabaiyo")
-                        return new SudokuStatus(false);
+                        throw "we should not reach here"
                     }
                     sudoku.setNumber(i, j, n_list[0]);
                     return new SudokuStatus(true, 
-                        `Deletion Lv.1 (column ${j}): cell(${i}, ${j})=${n_list[0]}`
+                        `Deletion Lv.1 (column ${j}): cell(${i}, ${j})=${n_list[0]}`,
+                        4, true, sudoku
                     );
                 }
             }
@@ -263,12 +293,12 @@ const _solve_deletion_block_Lv1 = (sudoku) => {
                         if(sudoku.getNumber_blockBased(block_i, block_j, i, j)==0){
                             const n_list = sudoku.getN_ListInCell((block_i-1)*3+i, (block_j-1)*3+j);
                             if(n_list.length!=1){
-                                console.error("yabaiyoyabaiyo")
-                                return new SudokuStatus(false);
+                                throw "we should not reach here"
                             }
                             sudoku.setNumber_blockBased(block_i, block_j, i, j, n_list[0]);
                             return new SudokuStatus(true, 
-                                `Deletion Lv.1 (block (${block_i}, ${block_j})): cell(${(block_i-1)*3+i}, ${(block_j-1)*3+j})=${n_list[0]}`
+                                `Deletion Lv.1 (block (${block_i}, ${block_j})): cell(${(block_i-1)*3+i}, ${(block_j-1)*3+j})=${n_list[0]}`,
+                                4, true, sudoku
                             );
                         }
                     }
@@ -306,7 +336,8 @@ const _solve_deletion_Lv2 = (sudoku) =>{
                 if(count == 1 && sudoku.getNumber(i, j)>0){
                     sudoku.setNumber(block_i_offset+i, block_j_offset+j, n);
                     return new SudokuStatus(true, 
-                        `Deletion Lv.2 (block): cell(${block_i_offset+i}, ${block_j_offset+j}) = ${n}`
+                        `Deletion Lv.2 (block): cell(${block_i_offset+i}, ${block_j_offset+j}) = ${n}`,
+                        4, true, sudoku
                     );
                 }
             }
@@ -326,7 +357,8 @@ const _solve_deletion_Lv2 = (sudoku) =>{
             if(count == 1 && sudoku.getNumber(i, j)>0){
                 sudoku.setNumber(i, j, n);
                 return new SudokuStatus(true, 
-                    `Deletion Lv.2 (row): cell(${i}, ${j}) = ${n}`
+                    `Deletion Lv.2 (row): cell(${i}, ${j}) = ${n}`,
+                    4, true, sudoku
                 );
             }
         }
@@ -345,7 +377,8 @@ const _solve_deletion_Lv2 = (sudoku) =>{
             if(count == 1 && sudoku.getNumber(i, j)>0){
                 sudoku.setNumber(i, j, n);
                 return new SudokuStatus(true, 
-                    `Deletion Lv.2 (column): cell(${i}, ${j}) = ${n}`
+                    `Deletion Lv.2 (column): cell(${i}, ${j}) = ${n}`,
+                    4, true, sudoku
                 );
             }
         }
@@ -355,6 +388,83 @@ const _solve_deletion_Lv2 = (sudoku) =>{
 };
 
 
+const _solve_deletion_cell_Lv2 = (sudoku) => {
+    for(let i=1; i<=9; i++){
+        for(let j=1; j<=9; j++){
+            if(sudoku.shadow.countCandidateInCell(i, j)==1 && sudoku.getNumber(i, j)==0){
+                // deletion
+                const n = sudoku.getN_ListInCell(i, j)[0];
+                sudoku.setNumber(i, j, n);
+                return new SudokuStatus(true,
+                    `Deletion Lv.2 (cell(${i}, ${j})): cell(${i}, ${j})=${n}`,
+                    4, true, sudoku
+                );
+            }
+        }
+    }
+    return new SudokuStatus(false);
+};
+
+
+const _solve_deletion_block_Lv2 = (sudoku) => {
+    for(const block_i of [1,2,3]){
+        for(const block_j of [1,2,3]){
+            for(let n=1; n<=9; n++){
+                if(sudoku.shadow.countCandidateInBlock(block_i, block_j, n)==1){
+                    const [i, j] = sudoku.getN_ListInBlock(block_i, block_j, n)[0];
+                    if(sudoku.getNumber_blockBased(block_i, block_j, i, j)==0){
+                        // deletion
+                        sudoku.setNumber_blockBased(block_i, block_j, i, j, n);
+                        return new SudokuStatus(true,
+                            `Deletion Lv.2 (block (${block_i}, ${block_j})): cell(${(block_i-1)*3+i}, ${(block_j-1)*3+j})=${n}`,
+                            4, true, sudoku
+                        );
+                    }
+                }
+            }
+        }
+    }
+    return new SudokuStatus(false);
+};
+
+const _solve_deletion_row_Lv2 = (sudoku) => {
+    for(let n=1; n<=9; n++){
+        for(let i=1; i<=9; i++){
+            if(sudoku.shadow.countCandidateInRow(i, n)==1){
+                const j = sudoku.getN_ListInRow(i, n)[0];
+                if(sudoku.getNumber(i, j)==0){
+                    // deletion
+                    sudoku.setNumber(i, j, n);
+                    return new SudokuStatus(true,
+                        `Deletion Lv.2 (row ${i}): cell(${i}, ${j})=${n}`,
+                        4, true, sudoku
+                    );
+                }
+            }
+        }
+    }
+    return new SudokuStatus(false);
+};
+
+
+const _solve_deletion_column_Lv2 = (sudoku) => {
+    for(let n=1; n<=9; n++){
+        for(let j=1; j<=9; j++){
+            if(sudoku.shadow.countCandidateInColumn(j, n)==1){
+                const i = sudoku.getN_ListInColumn(j, n)[0];
+                if(sudoku.getNumber(i, j)==0){
+                    // deletion
+                    sudoku.setNumber(i, j, n);
+                    return new SudokuStatus(true,
+                        `Deletion Lv.2 (column ${j}): cell(${i}, ${j})=${n}`,
+                        4, true, sudoku
+                    );
+                }
+            }
+        }
+    }
+    return new SudokuStatus(false);
+};
 
 /////////////////////////////////////////////////////////////////
 
@@ -363,12 +473,13 @@ const _solve_deletion_Lv2 = (sudoku) =>{
 const _solve_deletion_cell_Lv3 = (sudoku) => {
     for(let i=1; i<=9; i++){
         for(let j=1; j<=9; j++){
-            const n_list = sudoku.getN_ListInCell(i, j);
-            if(n_list.length==1 && sudoku.getNumber(i, j)==0){
+            if(sudoku.countCandidateInCell(i, j)==1 && sudoku.getNumber(i, j)==0){
                 // deletion
-                sudoku.setNumber(i, j, n_list[0]);
+                const n = sudoku.getN_ListInCell(i, j)[0];
+                sudoku.setNumber(i, j, n);
                 return new SudokuStatus(true,
-                    `Deletion Lv.3 (cell(${i}, ${j})): cell(${i}, ${j})=${n_list[0]}`
+                    `Deletion Lv.3 (cell(${i}, ${j})): cell(${i}, ${j})=${n}`,
+                    4, true, sudoku
                 );
             }
         }
@@ -378,16 +489,19 @@ const _solve_deletion_cell_Lv3 = (sudoku) => {
 
 
 const _solve_deletion_block_Lv3 = (sudoku) => {
-    for(let block_i=1; block_i<=3; block_i++){
-        for(let block_j=1; block_j<=3; block_j++){
+    for(const block_i of [1,2,3]){
+        for(const block_j of [1,2,3]){
             for(let n=1; n<=9; n++){
-                const n_list = sudoku.getN_ListInBlock(block_i, block_j, n);
-                if(n_list.length==1 && sudoku.getNumber_blockBased(block_i, block_j, n_list[0][0], n_list[0][1])==0){
-                    // deletion
-                    sudoku.setNumber_blockBased(block_i, block_j, n_list[0][0], n_list[0][1], n);
-                    return new SudokuStatus(true,
-                        `Deletion Lv.3 (block (${block_i}, ${block_j})): cell(${(block_i-1)*3+n_list[0][0]}, ${(block_j-1)*3+n_list[0][1]})=${n}`
-                    );
+                if(sudoku.countCandidateInBlock(block_i, block_j, n)==1){
+                    const [i, j] = sudoku.getN_ListInBlock(block_i, block_j, n)[0];
+                    if(sudoku.getNumber_blockBased(block_i, block_j, i, j)==0){
+                        // deletion
+                        sudoku.setNumber_blockBased(block_i, block_j, i, j, n);
+                        return new SudokuStatus(true,
+                            `Deletion Lv.3 (block (${block_i}, ${block_j})): cell(${(block_i-1)*3+i}, ${(block_j-1)*3+j})=${n}`,
+                            4, true, sudoku
+                        );
+                    }
                 }
             }
         }
@@ -399,13 +513,16 @@ const _solve_deletion_block_Lv3 = (sudoku) => {
 const _solve_deletion_row_Lv3 = (sudoku) => {
     for(let n=1; n<=9; n++){
         for(let i=1; i<=9; i++){
-            const n_list = sudoku.getN_ListInRow(i, n);
-            if(n_list.length==1 && sudoku.getNumber(i, n_list[0])==0){
-                // deletion
-                sudoku.setNumber(i, n_list[0], n);
-                return new SudokuStatus(true,
-                    `Deletion Lv.3 (row ${i}): cell(${i}, ${n_list[0]})=${n}`
-                );
+            if(sudoku.countCandidateInRow(i, n)==1){
+                const j = sudoku.getN_ListInRow(i, n)[0];
+                if(sudoku.getNumber(i, j)==0){
+                    // deletion
+                    sudoku.setNumber(i, j, n);
+                    return new SudokuStatus(true,
+                        `Deletion Lv.3 (row ${i}): cell(${i}, ${j})=${n}`,
+                        4, true, sudoku
+                    );
+                }
             }
         }
     }
@@ -416,13 +533,16 @@ const _solve_deletion_row_Lv3 = (sudoku) => {
 const _solve_deletion_column_Lv3 = (sudoku) => {
     for(let n=1; n<=9; n++){
         for(let j=1; j<=9; j++){
-            const n_list = sudoku.getN_ListInColumn(j, n);
-            if(n_list.length==1 && sudoku.getNumber(n_list[0], j)==0){
-                // deletion
-                sudoku.setNumber(n_list[0], j, n);
-                return new SudokuStatus(true,
-                    `Deletion Lv.3 (column ${j}): cell(${n_list[0]}, ${j})=${n}`
-                );
+            if(sudoku.countCandidateInColumn(j, n)==1){
+                const i = sudoku.getN_ListInColumn(j, n)[0];
+                if(sudoku.getNumber(i, j)==0){
+                    // deletion
+                    sudoku.setNumber(i, j, n);
+                    return new SudokuStatus(true,
+                        `Deletion Lv.3 (column ${j}): cell(${i}, ${j})=${n}`,
+                        4, true, sudoku
+                    );
+                }
             }
         }
     }
@@ -463,7 +583,8 @@ const __limit_block_line = (sudoku)=>{
                             sudoku.setCandidate_blockBased(block_i, block_j, pos[u][0], pos[u][1], n);
                         }
                         return new SudokuStatus(true, 
-                            `Limitation : block(${block_i}, ${block_j}) -> row ${row} n: ${n}`
+                            `Limitation : block(${block_i}, ${block_j}) -> row ${row} n: ${n}`,
+                            4, true, sudoku
                         );
                     }
                 }
@@ -484,9 +605,92 @@ const __limit_block_line = (sudoku)=>{
                             sudoku.setCandidate_blockBased(block_i, block_j, pos[u][0], pos[u][1], n);
                         }
                         return new SudokuStatus(true, 
-                            `Limitation : block(${block_i}, ${block_j}) -> column ${column} n: ${n}`
+                            `Limitation : block(${block_i}, ${block_j}) -> column ${column} n: ${n}`,
+                            4, true, sudoku
                         );
                     }
+                }
+            }
+        }
+    }
+    return new SudokuStatus(false);
+};
+
+
+
+const __limit_row_block = (sudoku)=>{
+    for(let n=1; n<=9; n++){
+        for(let i=1; i<=9; i++){
+            const num_n_cand_row = sudoku.countCandidateInRow(i, n);
+            if(num_n_cand_row!=2 && num_n_cand_row!=3){
+                continue;
+            }
+            // num_n_cand_row=2 or num_n_cand_row=3 from here.
+            
+            const pos = sudoku.getN_ListInRow(i, n);
+            const pos_block = pos.map(x=>Math.floor((x-1)/3)+1);
+
+            if(pos_block.every(e=>e===pos_block[0])){
+                // pos が全て同じブロックの場合
+                const block_i = Math.floor((i-1)/3)+1;
+                const block_j = pos_block[0];
+                const num_n_cand_block = sudoku.countCandidateInBlock(block_i, block_j, n);
+
+                if(num_n_cand_block > num_n_cand_row){
+                    // 消去可能な候補がある場合
+                    for(let u of [1,2,3]){
+                        for(let v of [1,2,3]){
+                            sudoku.deleteCandidate_blockBased(block_i, block_j, u, v, n);
+                        }
+                    }
+                    for(let j of pos){
+                        sudoku.setCandidate(i, j, n)
+                    }
+                    return new SudokuStatus(true, 
+                        `Limitation : row(${i}) -> block(${block_i}, ${block_j})  n: ${n}`,
+                        4, true, sudoku
+                    );
+                }
+            }
+        }
+    }
+    return new SudokuStatus(false);
+};
+
+
+
+const __limit_column_block = (sudoku)=>{
+    for(let n=1; n<=9; n++){
+        for(let j=1; j<=9; j++){
+            const num_n_cand_column = sudoku.countCandidateInColumn(j, n);
+            if(num_n_cand_column!=2 && num_n_cand_column!=3){
+                continue;
+            }
+            // num_n_cand_column=2 or num_n_cand_column=3 from here.
+            
+            const pos = sudoku.getN_ListInColumn(j, n);
+            const pos_block = pos.map(x=>Math.floor((x-1)/3)+1);
+
+            if(pos_block.every(e=>e===pos_block[0])){
+                // pos が全て同じブロックの場合
+                const block_i = pos_block[0];
+                const block_j = Math.floor((j-1)/3)+1;
+                const num_n_cand_block = sudoku.countCandidateInBlock(block_i, block_j, n);
+
+                if(num_n_cand_block > num_n_cand_column){
+                    // 消去可能な候補がある場合
+                    for(let u of [1,2,3]){
+                        for(let v of [1,2,3]){
+                            sudoku.deleteCandidate_blockBased(block_i, block_j, u, v, n);
+                        }
+                    }
+                    for(let i of pos){
+                        sudoku.setCandidate(i, j, n)
+                    }
+                    return new SudokuStatus(true, 
+                        `Limitation : column(${j}) -> block(${block_i}, ${block_j})  n: ${n}`,
+                        4, true, sudoku
+                    );
                 }
             }
         }
@@ -532,7 +736,8 @@ const _limit_row_ver1 = (sudoku, num_countries=2)=>{
                 }
             }
 
-            return new SudokuStatus(true, message);
+            return new SudokuStatus(true, message,
+                4, true, sudoku);
         }
     
     }
@@ -578,7 +783,8 @@ const _limit_column_ver1 = (sudoku, num_countries=2)=>{
                 }
             }
 
-            return new SudokuStatus(true, message);
+            return new SudokuStatus(true, message,
+                4, true, sudoku);
         }
     
     }
@@ -636,7 +842,8 @@ const _limit_block_ver1 = (sudoku, num_countries=2)=>{
                     }
                 }
 
-                return new SudokuStatus(true, message);
+                return new SudokuStatus(true, message,
+                    4, true, sudoku);
             }
         }
     }
@@ -767,7 +974,8 @@ const _limit_block_ver2 = (sudoku, num_countries=2)=>{
                         sudoku.deleteCandidate_blockBased(block_i, block_j, i, j, n);
                     }
                 }
-                return new SudokuStatus(true, message);
+                return new SudokuStatus(true, message,
+                    4, true, sudoku);
             }
         }
     }
@@ -814,7 +1022,8 @@ const _limit_row_ver2 = (sudoku, num_countries=2)=>{
                     sudoku.deleteCandidate(i, j, n);
                 }
             }
-            return new SudokuStatus(true, message);
+            return new SudokuStatus(true, message,
+                4, true, sudoku);
         }
     }
     
@@ -860,7 +1069,8 @@ const _limit_column_ver2 = (sudoku, num_countries=2)=>{
                     sudoku.deleteCandidate(i, j, n);
                 }
             }
-            return new SudokuStatus(true, message);
+            return new SudokuStatus(true, message,
+                4, true, sudoku);
         }
     }
     

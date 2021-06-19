@@ -2,17 +2,9 @@
 
 
 class QuickSudoku {
-    constructor(){
-        const numbers = new Array(81);
-        const candidates = new Array(81);
-
-        for(let i=0; i<81; i++){
-            numbers[i] = 0;
-            candidates[i] = 0b111111111;
-        }
-
-        this.numbers = numbers;
-        this.candidates = candidates;
+    constructor(depth=0){
+        //this.numbers = new Array(81).fill(0);
+        this.numbers = new Uint16Array(81).fill(0);
 
         // __hasContradiction
         // -1:  not checked
@@ -28,6 +20,16 @@ class QuickSudoku {
 
         this.no_unique_solution = false;
         this.no_solution = false;
+
+
+        this.candidates = new Uint16Array(81).fill(0b111111111);
+        this.candidates_row = new Uint16Array(81).fill(0b111111111);
+        this.candidates_column = new Uint16Array(81).fill(0b111111111);
+        this.candidates_block = new Uint16Array(81).fill(0b111111111);
+
+        if(depth==0){
+            this.shadow = new QuickSudoku(1);
+        }
     }
 
     //  getNumber
@@ -59,7 +61,7 @@ class QuickSudoku {
     //      None
     //  Side Effects:
     //      change this.numbers, this.candidates
-    setNumber(i, j, n){
+    setNumber(i, j, n, depth=0){
         this.numbers[(i-1)*9 + (j-1)] = n;
 
         // i 行と j 列 の候補を削除
@@ -84,6 +86,11 @@ class QuickSudoku {
 
         // 最後に cell(i, j) に n の候補を台に優
         this.setCandidate(i, j, n);
+
+        if(depth==0){
+            this.shadow.setNumber(i, j, n, 1);
+        }
+        
     }
 
     //  setNumber_blockBased
@@ -107,9 +114,24 @@ class QuickSudoku {
     //  Side Effects:
     //      change this.candidates
     deleteCandidate(i, j, n){
-        const n_bit = 1<<(n-1);
-        this.candidates[(i-1)*9 + (j-1)] |= n_bit;
-        this.candidates[(i-1)*9 + (j-1)] ^= n_bit;
+        const I = i-1;
+        const J = j-1;
+        const N = n-1;
+
+        const n_bit_mask = 0b111111111 ^ (1<<N);
+        this.candidates[I*9 + J] &= n_bit_mask;
+
+        const i_bit_mask = 0b111111111 ^ (1<<I);
+        const j_bit_mask = 0b111111111 ^ (1<<J);
+        this.candidates_row[N*9 + I] &= j_bit_mask;
+        this.candidates_column[N*9 + J] &= i_bit_mask;
+
+        const block_I = Math.floor(I/3);
+        const block_J = Math.floor(J/3);
+        const U = I%3;
+        const V = J%3;
+        const block_bit_mask = 0b111111111 ^ (1<<((U*3) + V));
+        this.candidates_block[N*9 + (block_I*3+block_J)] &= block_bit_mask;
     }
 
 
@@ -133,8 +155,24 @@ class QuickSudoku {
     //  Side Effects:
     //      change this.candidates
     setCandidate(i, j, n){
-        const n_bit = 1<<(n-1);
-        this.candidates[(i-1)*9 + (j-1)] |= n_bit;
+        const I = i-1;
+        const J = j-1;
+        const N = n-1;
+
+        const n_bit = 1<<N;
+        this.candidates[I*9 + J] |= n_bit;
+
+        const i_bit = 1<<I;
+        const j_bit = 1<<J;
+        this.candidates_row[N*9 + I] |= j_bit;
+        this.candidates_column[N*9 + J] |= i_bit;
+
+        const block_I = Math.floor(I/3);
+        const block_J = Math.floor(J/3);
+        const U = I%3;
+        const V = J%3;
+        const block_bit = 1 << ((U*3) + V);
+        this.candidates_block[N*9 + (block_I*3+block_J)] |= block_bit;
     }
 
     //  setCandidate_blockBased
@@ -204,11 +242,18 @@ class QuickSudoku {
     //      Clone of this instance
     //  Side Effects:
     //      None:
-    clone(){
+    clone(depth=0){
         const sudoku = new QuickSudoku();
         sudoku.numbers = new Array(...this.numbers);
+
         sudoku.candidates = new Array(...this.candidates);
-        
+        sudoku.candidates_row = new Array(...this.candidates_row);
+        sudoku.candidates_column = new Array(...this.candidates_column);
+        sudoku.candidates_block = new Array(...this.candidates_block);
+
+        if(depth==0){
+            sudoku.shadow = this.shadow.clone(1);
+        }
         
         this.__hasContradiction = -1;
         this.__isSolved = -1;
@@ -254,12 +299,29 @@ class QuickSudoku {
     //      number of candidates in cell(i, j)
     //  Side Effects:
     //      None:
-    countCandidateInCell(i, j){
+    /*countCandidateInCell(i, j){
         let count = 0;
         for(let n=1; n<=9; n++){
             count += this.getCandidate(i, j, n);
         }
         return count;
+    }*/
+
+
+    //  countCandidateInCell
+    //  Input:
+    //      1 <= i,j <= 9
+    //  Results:
+    //      number of candidates in cell(i, j)
+    //  Side Effects:
+    //      None:
+    countCandidateInCell(i, j){
+        let result = this.candidates[(i-1)*9 + (j-1)];
+        result = (result & 0b0101010101) + ((result>>1) & 0b0101010101);
+        result = (result & 0b1100110011) + ((result>>2) & 0b1100110011);
+        result = (result & 0b1100001111) + ((result>>4) & 0b1100001111);
+        result = (result & 0b0011111111) + ((result>>8) & 0b0011111111);
+        return result;
     }
 
 
@@ -270,12 +332,29 @@ class QuickSudoku {
     //      number of candidates in row i
     //  Side Effects:
     //      None:
-    countCandidateInRow(i, n){
+    /*countCandidateInRow(i, n){
         let count = 0;
         for(let j=1; j<=9; j++){
             count += this.getCandidate(i, j, n);
         }
         return count;
+    }*/
+
+
+    //  __countCandidateInRow
+    //  Input:
+    //      1 <= i,n <= 9
+    //  Results:
+    //      number of candidates in row i
+    //  Side Effects:
+    //      None:
+    countCandidateInRow(i, n){
+        let result = this.candidates_row[(n-1)*9+(i-1)];
+        result = (result & 0b0101010101) + ((result>>1) & 0b0101010101);
+        result = (result & 0b1100110011) + ((result>>2) & 0b1100110011);
+        result = (result & 0b1100001111) + ((result>>4) & 0b1100001111);
+        result = (result & 0b0011111111) + ((result>>8) & 0b0011111111);
+        return result;
     }
 
 
@@ -286,12 +365,29 @@ class QuickSudoku {
     //      number of candidates in column i
     //  Side Effects:
     //      None:
-    countCandidateInColumn(j, n){
+    /*countCandidateInColumn(j, n){
         let count = 0;
         for(let i=1; i<=9; i++){
             count += this.getCandidate(i, j, n);
         }
         return count;
+    }*/
+
+
+    //  countCandidateInColumn
+    //  Input:
+    //      1 <= j,n <= 9
+    //  Results:
+    //      number of candidates in column i
+    //  Side Effects:
+    //      None:
+    countCandidateInColumn(j, n){
+        let result = this.candidates_column[(n-1)*9+(j-1)];
+        result = (result & 0b0101010101) + ((result>>1) & 0b0101010101);
+        result = (result & 0b1100110011) + ((result>>2) & 0b1100110011);
+        result = (result & 0b1100001111) + ((result>>4) & 0b1100001111);
+        result = (result & 0b0011111111) + ((result>>8) & 0b0011111111);
+        return result;
     }
 
 
@@ -303,14 +399,13 @@ class QuickSudoku {
     //      number of candidates in block(i_block, j_block)
     //  Side Effects:
     //      None:
-    countCandidateInBlock(i_block, j_block, n){
-        let count = 0;
-        for(let i=1; i<=3; i++){
-            for(let j=1; j<=3; j++){
-                count += this.getCandidate_blockBased(i_block, j_block, i, j, n);
-            }
-        }
-        return count;
+    countCandidateInBlock(block_i, block_j, n){
+        let result = this.candidates_block[(n-1)*9 + (block_i-1)*3 + (block_j-1)];
+        result = (result & 0b0101010101) + ((result>>1) & 0b0101010101);
+        result = (result & 0b1100110011) + ((result>>2) & 0b1100110011);
+        result = (result & 0b1100001111) + ((result>>4) & 0b1100001111);
+        result = (result & 0b0011111111) + ((result>>8) & 0b0011111111);
+        return result;
     }
 
 
@@ -459,71 +554,52 @@ class QuickSudoku {
     //  Side Effects:
     //      None:
     hasContradiction(print_debug_log=true){
-        /*if(this.__hasContradiction>-1){
-            // 既にこの関数は実行されているので、その実行結果を返す
-            switch(this.__hasContradiction){
-                case 0: return new SudokuStatus(false, "awawa1");
-                case 1: return new SudokuStatus(true, "awawa2");
-                default: throw "We should not reach here!";
-            }
-        }*/
-
-
         // check contradiction in cell
-        for(let i=1; i<=9; i++){
-            for(let j=1; j<=9; j++){
-                if(this.countCandidateInCell(i, j)==0){
-                    this.__hasContradiction = 1;
-                    return new SudokuStatus(true, 
-                        `Contradiction (cell(${i}, ${j})): No numbers fit in this cell.`, 
-                        2, print_debug_log
-                    );
-                }
-            }
-        }
-
-        // check contradiction in row
-        for(let i=1; i<=9; i++){
-            for(let n=1; n<=9; n++){
-                if(this.countCandidateInRow(i, n)==0){
-                    this.__hasContradiction = 1;
-                    return new SudokuStatus(true, 
-                        `Contradiction (row ${i}): ${n} cannot be fit in this row.`,
-                        2, print_debug_log
-                    );
-                }
-            }
+        const i0 = this.candidates.indexOf(0);
+        if(i0 > -1){
+            const i = Math.floor(i0/9) + 1;
+            const j = i0%9 + 1;
+            return new SudokuStatus(true, 
+                `Contradiction (cell(${i}, ${j})): No numbers fit in this cell.`, 
+                2, print_debug_log
+            );
         }
         
-
+        // check contradiction in row
+        const i1 = this.candidates_row.indexOf(0);
+        if(i1 > -1){
+            const n = Math.floor(i1/9) + 1;
+            const i = i1%9 + 1;
+            return new SudokuStatus(true, 
+                `Contradiction (row ${i}): ${n} cannot be fit in this row.`,
+                2, print_debug_log
+            );
+        }
+        
         // check contradiction in column
-        for(let j=1; j<=9; j++){
-            for(let n=1; n<=9; n++){
-                if(this.countCandidateInColumn(j, n)==0){
-                    this.__hasContradiction = 1;
-                    return new SudokuStatus(true, 
-                        `Contradiction (column ${j}): ${n} cannot be fit in this column.`, 
-                        2, print_debug_log
-                    );
-                }
-            }
+        const i2 = this.candidates_column.indexOf(0);
+        if(i2 > -1){
+            const n = Math.floor(i2/9) + 1;
+            const j = i2%9 + 1;
+            return new SudokuStatus(true, 
+                `Contradiction (row ${j}): ${n} cannot be fit in this row.`,
+                2, print_debug_log
+            );
         }
-
+        
         // check contradiction in block
-        for(let i_block=1; i_block<=3; i_block++){
-            for(let j_block=1; j_block<=3; j_block++){
-                for(let n=1; n<=9; n++){
-                    if(this.countCandidateInBlock(i_block, j_block, n)==0){
-                        this.__hasContradiction = 1;
-                        return new SudokuStatus(true, 
-                            `Contradiction (block(${i_block}, ${j_block})): ${n} cannot be fit in this block.`, 
-                            2, print_debug_log
-                        );
-                    }
-                }
-            }
+        const i3 = this.candidates_block.indexOf(0);
+        if(i3 > -1){
+            const n = Math.floor(i3/9) + 1;
+            const temp = i3%9;
+            const block_i = Math.floor(temp/3) + 1;
+            const block_j = temp%3 + 1;
+            return new SudokuStatus(true, 
+                `Contradiction (block(${block_i}, ${block_j})): ${n} cannot be fit in this block.`, 
+                2, print_debug_log
+            );
         }
-
+        
         // no contradiction found
         this.__hasContradiction = 0;
         return new SudokuStatus(false);
@@ -623,14 +699,7 @@ class QuickSudoku {
                             }
 
                             if(result.isSolved()==true){
-                                n_copy = candidate;
-                                count_solved++;
-                                if(count_solved > 1){
-                                    solved_sudoku.no_unique_solution = true;
-                                    return solved_sudoku;
-                                }
-                                solved_sudoku = result;
-                                continue;
+                                return result;
                             }
 
                             if(result.hasContradiction(false).status==true){
@@ -671,6 +740,38 @@ class QuickSudoku {
     //      and re-culculate this.candidates
     resetCandidate(){
         this.candidates.fill(0b111111111);
+        this.candidates_row.fill(0b111111111);
+        this.candidates_column.fill(0b111111111);
+        this.candidates_block.fill(0b111111111);
+
+        for(let i=1; i<=9; i++){
+            for(let j=1; j<=9; j++){
+                if(this.getNumber(i, j) > 0){
+                    this.setNumber(i, j, this.getNumber(i, j));
+                }
+            }
+        }
+    }
+
+
+    //  reset
+    //  Input:
+    //      None
+    //  Results:
+    //      None
+    //  Side Effects:
+    //      All elements of this.candidates will be set to 511
+    //      and re-culculate this.candidates
+    resetCandidate(){
+        this.candidates.fill(0b111111111);
+        this.candidates_row.fill(0b111111111);
+        this.candidates_column.fill(0b111111111);
+        this.candidates_block.fill(0b111111111);
+
+        this.shadow.candidates.fill(0b111111111);
+        this.shadow.candidates_row.fill(0b111111111);
+        this.shadow.candidates_column.fill(0b111111111);
+        this.shadow.candidates_block.fill(0b111111111);
 
         for(let i=1; i<=9; i++){
             for(let j=1; j<=9; j++){
@@ -713,7 +814,7 @@ class QuickSudoku {
             throw `Argment length must be 81. Actual value: ${arr.length}`;
         }
 
-        this.candidates.fill(0b111111111);
+        this.resetCandidate();
 
         let index = 0;
         for(let i=1; i<=9; i++){
@@ -770,52 +871,55 @@ class QuickSudoku {
 
         return result;
     }
+
+
+    switchMode(){
+        let temp;
+
+        temp = this.candidates;
+        this.candidates = this.__candidates;
+        this.__candidates = temp;
+
+        temp = this.candidates_row;
+        this.candidates_row = this.__candidates_row;
+        this.__candidates_row = temp;
+
+        temp = this.candidates_column;
+        this.candidates_column = this.__candidates_column;
+        this.__candidates_column = temp;
+
+        temp = this.candidates_block;
+        this.candidates_block = this.__candidates_block;
+        this.__candidates_block = temp;
+    }
 }
 
 
-let sudoku_answer_temp;
-document.getElementById("a_test").addEventListener("click", ()=>{
 
-    sudoku_answer_temp = current_sudoku.test();
-    
-    current_sudoku=quickSolver(current_sudoku);
-    draw();
-});
-
-
-
+let count_steps = 0;
+const sudoku_dummy = new QuickSudoku();
 
 class SudokuStatus {
-    constructor(status=false, message="", severity=4, logging=true){
+    constructor(status=false, message="", severity=4, logging=true, sudoku=sudoku_dummy){
         this.status = status;
         this.message = message;
+        this.severity = severity;
+        
 
-        if(status==false  || message==""){
+        if(logging === false){
             return;
         }
 
-        if(logging==false){
+        if(status===false  || message===""){
             return;
         }
+        
+        this.sudoku = sudoku.clone();
+        sudoku_procedure.push(this)
 
-        print(message, severity)
+        //print(message, severity)
+        count_steps++;
 
         return;
-        switch(severity){
-            case 4:
-                console.debug(message);
-                break;
-            case 3:
-                console.info(message);
-                break;
-            case 2:
-                console.warn(message);
-                break;
-            case 1:
-                console.error(message);
-                break;
-            default:
-                throw ""
-        }
     }
 };

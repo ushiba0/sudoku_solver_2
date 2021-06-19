@@ -2,25 +2,46 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sudoku Solver</title>
 </head>
+<style>
+    .btn {
+        background-color: #ddd;
+        display: inline-block;
+        font-size: 14px;
+        text-align: center;
+        padding: 3px;
+        margin: 3px;
+    }
+</style>
+
 <body>
-    <p>Sudoku Solver
-    </p>
-    <canvas id="canvas" width="500", height="400">
-        Make sure your browser supports canvas.
-    </canvas>
-    <canvas id="numberkeys" width="500", height="50">
-        Make sure your browser supports canvas.
-    </canvas>
+    <div>Sudoku Solver</div>
+    <div>
+        <canvas id="canvas" width="380", height="380">
+            Your browser does not support canvas.
+        </canvas>
+    </div>
+    <div>
+        <canvas id="numberkeys" width="380", height="50">
+            Your browser does not support canvas.
+        </canvas>
+    </div>
 
 
-    <div id="draw_1">数字の候補を標示</div>
-    <div id="start_solve">解析する</div>
-    <div id="reset">元に戻す</div>
-    <div id="a_test">a_test</div>
+    <div>
+        <div id="start_solve" class="btn">Analyze</div>
+        <div id="delete" class="btn">Delete</div>
+        <div id="back" class="btn">Back</div>
+        <div id="reset" class="btn">Reset</div>
+    </div>
+
+    <div>
+        <div id="draw" class="btn">Show Candidates</div>
+        <div id="a_test" class="btn">Show Example</div>
+    </div>
+
 
     <div id="steps" style="height:300px;overflow:auto;"></div>
 
