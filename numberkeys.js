@@ -25,7 +25,7 @@ const drawNumberKeys = ()=>{
     nkctx.font = '24pt Arial';
     for(let i=1; i<=9; i++){
         const j = 1;
-        const x = (i-0.5)*cell_width + nk_offset_x - 8;
+        const x = (i-0.5)*cell_width + nk_offset_x - 9;
         const y = (j-0.5)*cell_width + nk_offset_y + 11;
     
         nkctx.fillText(i, x, y);

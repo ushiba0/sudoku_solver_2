@@ -52,7 +52,7 @@ const drawNumberInCell = (i, j, number, color='rgb(30, 30, 30)')=>{
     context.font = '24pt Arial';
 
     // i, j の順番が逆になっている
-    const x = (j-0.5)*cell_width + offset_x - 8;
+    const x = (j-0.5)*cell_width + offset_x - 9;
     const y = (i-0.5)*cell_width + offset_y + 11;
 
     context.fillText(number, x, y);
@@ -125,7 +125,7 @@ canvas.addEventListener('click', e=>{
 
     cursor.i = i;
     cursor.j = j;
-    draw();
+    draw(false, current_sudoku.getNumber(i, j));
 });
 
 
@@ -136,11 +136,11 @@ const drawSudoku = (sudoku)=>{
             for(let j=1; j<=9; j++){
                 if(sudoku.getNumber(i, j) > 0){
                     if(sudoku.original_problem.getNumber(i, j) == 0){
-                        // 問題なので黒でdraw
-                        drawNumberInCell(i, j, sudoku.getNumber(i, j));
-                    }else{
                         // 回答なので青でdraw
                         drawNumberInCell(i, j, sudoku.getNumber(i, j), 'rgb(90, 90, 255)');
+                    }else{
+                        // 問題なので黒でdraw
+                        drawNumberInCell(i, j, sudoku.getNumber(i, j));
                     }
                     
                 }
@@ -191,9 +191,41 @@ const drawCandidate = (sudoku)=>{
     }
 };
 
-const draw = (__drawCandidate = false)=>{
+const drawHighlight = (n=0) =>{
+    if(n==0){
+        return;
+    }
+
+    // n が入ることのないマスを明るめの色でハイライト
+    for(let i=1; i<=9; i++){
+        for(let j=1; j<=9; j++){
+            if(current_sudoku.getCandidate(i, j, n)==false){
+                context.fillStyle = 'rgb(230, 230, 230)';
+                const x = (j-1)*cell_width + offset_x;
+                const y = (i-1)*cell_width + offset_y;
+                context.fillRect(x, y, cell_width, cell_width);
+            }
+        }
+    }
+
+    // n (数字) のマスを暗めの色でハイライト
+    for(let i=1; i<=9; i++){
+        for(let j=1; j<=9; j++){
+            if(current_sudoku.getNumber(i, j)==n){
+                context.fillStyle = 'rgb(220, 220, 255)';
+                const x = (j-1)*cell_width + offset_x;
+                const y = (i-1)*cell_width + offset_y;
+                context.fillRect(x, y, cell_width, cell_width);
+            }
+        }
+    }
+
+};
+
+const draw = (__drawCandidate = false, highlight_number=0)=>{
     context.clearRect(0, 0, canvas.width, canvas.height);
 
+    drawHighlight(highlight_number);
     drawSheet();
     drawCursor();
     drawSudoku(current_sudoku);
