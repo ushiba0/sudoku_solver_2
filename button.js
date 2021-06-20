@@ -11,6 +11,12 @@ const start_solve = document.getElementById("start_solve");
 start_solve.addEventListener("click", e=>{
     e.preventDefault();
 
+    const steps_div = document.getElementById('steps');
+    while(steps_div.firstChild){
+        steps_div.removeChild(steps_div.firstChild);
+    }
+    while(sudoku_procedure.pop());
+
     //////
     // save to local storage
     const history_index = parseInt(localStorage.getItem('history_index')) || 0;
@@ -30,7 +36,10 @@ start_solve.addEventListener("click", e=>{
     
     logging = true;
     current_sudoku = quickSolver(current_sudoku);
+    current_sudoku.original_problem = sudoku_backup;
+
     draw();
+
 
     for(const sudoku_status of sudoku_procedure){
         print(sudoku_status.message, sudoku_status.severity)
@@ -53,6 +62,12 @@ const reset = document.getElementById("reset");
 reset.addEventListener("click", e=>{
     e.preventDefault();
     current_sudoku = new QuickSudoku();
+
+    const steps_div = document.getElementById('steps');
+    while(steps_div.firstChild){
+        steps_div.removeChild(steps_div.firstChild);
+    }
+    while(sudoku_procedure.pop());
 
     user_action_history.push(new QuickSudoku);
     draw();

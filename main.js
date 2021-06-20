@@ -47,8 +47,8 @@ const drawSheet = ()=>{
 };
 
 
-const drawNumberInCell = (i, j, number)=>{
-    context.fillStyle = 'rgb(0, 255, 0)';
+const drawNumberInCell = (i, j, number, color='rgb(30, 30, 30)')=>{
+    context.fillStyle = color;
     context.font = '24pt Arial';
 
     // i, j の順番が逆になっている
@@ -130,6 +130,26 @@ canvas.addEventListener('click', e=>{
 
 
 const drawSudoku = (sudoku)=>{
+    // problem と answer がある場合の描写
+    if(sudoku.original_problem instanceof QuickSudoku){
+        for(let i=1; i<=9; i++){
+            for(let j=1; j<=9; j++){
+                if(sudoku.getNumber(i, j) > 0){
+                    if(sudoku.original_problem.getNumber(i, j) == 0){
+                        // 問題なので黒でdraw
+                        drawNumberInCell(i, j, sudoku.getNumber(i, j));
+                    }else{
+                        // 回答なので青でdraw
+                        drawNumberInCell(i, j, sudoku.getNumber(i, j), 'rgb(90, 90, 255)');
+                    }
+                    
+                }
+            }
+        }
+        return;
+    }
+
+    // 通常の描写
     for(let i=1; i<=9; i++){
         for(let j=1; j<=9; j++){
             if(sudoku.getNumber(i, j) > 0){
