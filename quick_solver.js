@@ -678,7 +678,9 @@ class QuickSudoku {
             for(let i=1; i<=9; i++){
                 for(let j=1; j<=9; j++){
                     if(sudoku.getNumber(i, j)==0){
-                        
+                        if(sudoku.hasContradiction(false).status==true){
+                            return sudoku;
+                        }
                         const candidates = sudoku.getCandidateInArray(i, j);
                         if(candidates.length==0){
                             sudoku.__hasContradiction = 1;

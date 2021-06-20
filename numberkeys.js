@@ -5,6 +5,11 @@ const nkctx = numberkey_canvas.getContext('2d');
 const nk_offset_x = offset_x;
 const nk_offset_y = 5;
 
+
+nkctx.scale(2, 2);
+numberkey_canvas.style.transform='scale(0.5, 0.5)';
+numberkey_canvas.style.transformOrigin="top left";
+
 const drawNumberKeys = ()=>{
 
     // draw 1x9 cells
@@ -31,6 +36,8 @@ const drawNumberKeys = ()=>{
 };
 
 numberkey_canvas.addEventListener('click', e=>{
+    user_action_history.push(current_sudoku.clone());
+
     const rect = e.target.getBoundingClientRect();
     const mouse_x = e.clientX - rect.left;
     const i_float = (mouse_x - nk_offset_x)/cell_width;
@@ -39,7 +46,6 @@ numberkey_canvas.addEventListener('click', e=>{
     
     current_sudoku.setNumber(cursor.i, cursor.j, i);
     current_sudoku.resetCandidate();
-    user_action_history.push(current_sudoku.clone());
     draw();
 });
 

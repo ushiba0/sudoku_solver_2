@@ -11,6 +11,17 @@ const start_solve = document.getElementById("start_solve");
 start_solve.addEventListener("click", e=>{
     e.preventDefault();
 
+    //////
+    // save to local storage
+    const history_index = parseInt(localStorage.getItem('history_index')) || 0;
+    const sudoku_string = current_sudoku.exportSudokuAsText();
+    if(sudoku_string!=localStorage.getItem(`history${history_index}`)){
+        localStorage.setItem(`history${history_index+1}`, sudoku_string);
+        localStorage.setItem(`history_index`, `${history_index+1}`);
+        referring_index = history_index+1;
+    }
+    /////
+
     logging = false;
     sudoku_backup = current_sudoku.clone();
     const sudoku_clone = current_sudoku.clone();
@@ -56,6 +67,7 @@ back_btn.addEventListener("click", e=>{
     
     if(user_action_history.length==0){
         current_sudoku = new QuickSudoku();
+        user_action_history.push(new QuickSudoku());
         draw();
         return;
     }
@@ -75,4 +87,30 @@ document.getElementById("a_test").addEventListener("click", e=>{
     current_sudoku.importSudokuFromText("000070102040500000700019060000000037034000000060350004120800000000060009079102800");
     draw()
     e.preventDefault();
+});
+
+
+
+const history_btn = document.getElementById("history");
+let referring_index = parseInt(localStorage.getItem('history_index')) || 0;
+history_btn.addEventListener("click", e=>{
+    e.preventDefault();
+
+    const history_index = parseInt(localStorage.getItem('history_index')) || 0;
+    if(history_index<1){
+        return;
+    }
+
+    if(referring_index<1){
+        return;
+    }
+
+
+    const sudoku_string = localStorage.getItem(`history${referring_index}`);
+    current_sudoku = new QuickSudoku();
+    current_sudoku.importSudokuFromText(sudoku_string);
+    referring_index -= 1;
+
+    user_action_history.push(current_sudoku.clone());
+    draw();
 });

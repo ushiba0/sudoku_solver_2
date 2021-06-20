@@ -4,10 +4,15 @@
 const canvas = document.getElementById('canvas');
 const context = canvas.getContext('2d');
 
+const scale = 1;
+context.scale(2, 2);
+canvas.style.transform='scale(0.5, 0.5)';
+canvas.style.transformOrigin="top left";
 
-const cell_width = 40;
-const offset_x = 10;
-const offset_y = 10;
+
+const cell_width = 40 * scale;
+const offset_x = 10 * scale;
+const offset_y = 10 * scale;
 
 const sudoku_procedure = [];
 const sudoku_log = [];
@@ -18,7 +23,6 @@ const cursor = {i: -40, j: -400};
 // drawSheet
 // Draw 9x9 sudoku sheet.
 const drawSheet = ()=>{
-
 
     // draw 9x9 cells
     context.strokeStyle = 'rgb(170, 170, 170)';
@@ -95,9 +99,9 @@ document.body.addEventListener("keydown", event =>{
         case "1": case "2": case "3": 
         case "4": case "5": case "6": 
         case "7": case "8": case "9": 
+            user_action_history.push(current_sudoku.clone());
             current_sudoku.setNumber(cursor.i, cursor.j, parseInt(event.key));
             current_sudoku.resetCandidate();
-            user_action_history.push(current_sudoku.clone());
             draw();
             break;
         default:
